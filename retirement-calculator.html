@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Retirement Calculator</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 480px; margin: 2rem auto; padding: 1rem; }
+    label { display: block; margin-top: 1rem; }
+    input[type=number] { width: 100%; padding: 0.5rem; font-size: 1rem; }
+    button { margin-top: 1.5rem; padding: 0.75rem 1rem; font-size: 1rem; cursor: pointer; }
+    .result { margin-top: 2rem; padding: 1rem; background: #f0f0f0; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <h1>Retirement Calculator</h1>
+
+  <label>
+    Monthly spending after retirement (current value, THB):
+    <input type="number" id="monthlySpending" min="0" value="30000" />
+  </label>
+
+  <label>
+    Current age:
+    <input type="number" id="currentAge" min="0" max="100" value="30" />
+  </label>
+
+  <label>
+    Retirement age:
+    <input type="number" id="retireAge" min="0" max="100" value="60" />
+  </label>
+
+  <label>
+    Current savings (THB):
+    <input type="number" id="currentSaving" min="0" value="500000" />
+  </label>
+
+  <label>
+    Expected annual inflation rate (%):
+    <input type="number" id="inflationRate" min="0" step="0.01" value="3" />
+  </label>
+
+  <label>
+    Expected annual return on investment (%):
+    <input type="number" id="expectedROI" min="0" step="0.01" value="7" />
+  </label>
+
+  <button onclick="calculateRetirement()">Calculate</button>
+
+  <div class="result" id="result"></div>
+
+  <script>
+    function calculateRetirement() {
+      const monthlySpending = parseFloat(document.getElementById('monthlySpending').value);
+      const currentAge = parseInt(document.getElementById('currentAge').value);
+      const retireAge = parseInt(document.getElementById('retireAge').value);
+      const currentSaving = parseFloat(document.getElementById('currentSaving').value);
+      const inflationRate = parseFloat(document.getElementById('inflationRate').value) / 100;
+      const expectedROI = parseFloat(document.getElementById('expectedROI').value) / 100;
+
+      if (
+        isNaN(monthlySpending) || isNaN(currentAge) || isNaN(retireAge) || isNaN(currentSaving) ||
+        isNaN(inflationRate) || isNaN(expectedROI) ||
+        currentAge >= retireAge || currentAge < 0 || retireAge < 0
+      ) {
+        document.getElementById('result').innerHTML = '<p style="color:red;">Please enter valid inputs. Retirement age must be greater than current age.</p>';
+        return;
+      }
+
+      const yearsToRetire = retireAge - currentAge;
+
+      // Adjust monthly spending at retirement age considering inflation (future value)
+      const adjustedMonthlySpending = monthlySpending * Math.pow(1 + inflationRate, yearsToRetire);
+
+      // Estimate how many years after retirement (assume life expectancy = 85)
+      const lifeExpectancy = 85;
+      const yearsAfterRetirement = lifeExpectancy - retireAge;
+      if(yearsAfterRetirement <= 0) {
+        document.getElementById('result').innerHTML = '<p style="color:red;">Retirement age is beyond or equal to life expectancy.</p>';
+        return;
+      }
+
+      // Calculate lump sum needed at retirement to cover spending for years after retirement
+      // Assuming you withdraw monthlySpending each month, adjusted for inflation = 0, and investment return during retirement = 0 for simplicity
+      // To be more accurate, assume investment return during retirement same as ROI (or zero for safety)
+      // Here, to keep simple, assume investment return = inflation (so purchasing power preserved)
+      // Lump sum = adjustedMonthlySpending * 12 * yearsAfterRetirement
+
+      const lumpSumNeeded = adjustedMonthlySpending * 12 * yearsAfterRetirement;
+
+      // Now calculate how much to save monthly until retirement to reach lumpSumNeeded considering current saving and ROI
+
+      // Formula for future value of current saving:
+      // FV_currentSaving = currentSaving * (1 + expectedROI)^yearsToRetire
+
+      const fvCurrentSaving = currentSaving * Math.pow(1 + expectedROI, yearsToRetire);
+
+      // Remaining amount to save:
+      const remainingAmount = lumpSumNeeded - fvCurrentSaving;
+      if (remainingAmount <= 0) {
+        // Already have enough saving
+        document.getElementById('result').innerHTML = `
+          <p>🎉 Congratulations! Your current savings and expected return are enough to cover your retirement spending.</p>
+          <p><strong>Lump sum needed at retirement:</strong> ${lumpSumNeeded.toLocaleString(undefined, {style:'currency', currency:'THB'})}</p>
+          <p><strong>Current savings future value at retirement:</strong> ${fvCurrentSaving.toLocaleString(undefined, {style:'currency', currency:'THB'})}</p>
+          <p><strong>Monthly savings needed:</strong> 0 THB</p>
+        `;
+        return;
+      }
+
+      // Calculate monthly saving required to accumulate remainingAmount in yearsToRetire years with monthly compounding
+
+      // Use future value of annuity formula:
+      // FV = P * [ ( (1 + r)^n - 1 ) / r ]
+      // where
+      // FV = remainingAmount
+      // P = monthly saving
+      // r = monthly interest rate = expectedROI / 12
+      // n = number of months = yearsToRetire * 12
+
+      const r = expectedROI / 12;
+      const n = yearsToRetire * 12;
+
+      const monthlySaving = remainingAmount * r / (Math.pow(1 + r, n) - 1);
+
+      document.getElementById('result').innerHTML = `
+        <p><strong>Lump sum needed at retirement:</strong> ${lumpSumNeeded.toLocaleString(undefined, {style:'currency', currency:'THB'})}</p>
+        <p><strong>Current savings future value at retirement:</strong> ${fvCurrentSaving.toLocaleString(undefined, {style:'currency', currency:'THB'})}</p>
+        <p><strong>Monthly savings needed:</strong> ${monthlySaving.toLocaleString(undefined, {style:'currency', currency:'THB'})}</p>
+      `;
+    }
+  </script>
+</body>
+</html>
